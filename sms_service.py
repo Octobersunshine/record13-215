@@ -75,14 +75,35 @@ class RateLimiter:
 
 
 class PhoneValidator:
-    @staticmethod
-    def validate(phone: str) -> bool:
-        cleaned = phone.strip().replace("-", "").replace(" ", "")
-        return bool(PHONE_PATTERN.match(cleaned))
+    _FULLWIDTH_DIGITS = str.maketrans(
+        "０１２３４５６７８９",
+        "0123456789"
+    )
+    _FULLWIDTH_CHARS = str.maketrans({
+        "　": " ",
+        "－": "-",
+        "（": "(",
+        "）": ")",
+        "＋": "+",
+    })
 
     @staticmethod
     def normalize(phone: str) -> str:
-        return phone.strip().replace("-", "").replace(" ", "")
+        if not isinstance(phone, str):
+            return ""
+        cleaned = phone.translate(PhoneValidator._FULLWIDTH_CHARS)
+        cleaned = cleaned.translate(PhoneValidator._FULLWIDTH_DIGITS)
+        digits = re.sub(r"\D", "", cleaned)
+        if digits.startswith("0086") and len(digits) == 15:
+            digits = digits[4:]
+        elif digits.startswith("86") and len(digits) == 13:
+            digits = digits[2:]
+        return digits
+
+    @staticmethod
+    def validate(phone: str) -> bool:
+        normalized = PhoneValidator.normalize(phone)
+        return bool(PHONE_PATTERN.match(normalized))
 
 
 class BlacklistManager:
