@@ -1,0 +1,151 @@
+{
+  "total": 22,
+  "success": 9,
+  "failed": 11,
+  "blacklisted": 1,
+  "invalid": 1,
+  "duration": 0.01,
+  "success_rate": 40.91,
+  "failed_rate": 50.0,
+  "actual_sent": 20,
+  "failure_reasons": {
+    "短信网关连接超时": 5,
+    "签名校验失败": 4,
+    "账户余额不足": 1,
+    "发送失败": 1
+  },
+  "results": [
+    {
+      "phone": "13800000011",
+      "status": "blacklisted",
+      "message": "号码在黑名单中",
+      "timestamp": 0.0
+    },
+    {
+      "phone": "123456",
+      "status": "invalid",
+      "message": "无效的手机号码",
+      "timestamp": 0.0
+    },
+    {
+      "phone": "13910000007",
+      "status": "success",
+      "message": "",
+      "timestamp": 1781237719.1799076
+    },
+    {
+      "phone": "13910000015",
+      "status": "failed",
+      "message": "短信网关连接超时",
+      "timestamp": 1781237719.1799502
+    },
+    {
+      "phone": "13910000008",
+      "status": "failed",
+      "message": "账户余额不足",
+      "timestamp": 1781237719.179962
+    },
+    {
+      "phone": "13910000016",
+      "status": "failed",
+      "message": "签名校验失败",
+      "timestamp": 1781237719.179969
+    },
+    {
+      "phone": "13910000009",
+      "status": "success",
+      "message": "",
+      "timestamp": 1781237719.18017
+    },
+    {
+      "phone": "13910000002",
+      "status": "success",
+      "message": "",
+      "timestamp": 1781237719.180304
+    },
+    {
+      "phone": "13910000017",
+      "status": "success",
+      "message": "",
+      "timestamp": 1781237719.180493
+    },
+    {
+      "phone": "13910000010",
+      "status": "failed",
+      "message": "短信网关连接超时",
+      "timestamp": 1781237719.1807115
+    },
+    {
+      "phone": "13910000018",
+      "status": "failed",
+      "message": "发送失败",
+      "timestamp": 1781237719.1807232
+    },
+    {
+      "phone": "13910000011",
+      "status": "failed",
+      "message": "短信网关连接超时",
+      "timestamp": 1781237719.1807294
+    },
+    {
+      "phone": "13910000005",
+      "status": "failed",
+      "message": "签名校验失败",
+      "timestamp": 1781237719.1807353
+    },
+    {
+      "phone": "13910000019",
+      "status": "success",
+      "message": "",
+      "timestamp": 1781237719.1810029
+    },
+    {
+      "phone": "13910000001",
+      "status": "failed",
+      "message": "短信网关连接超时",
+      "timestamp": 1781237719.181013
+    },
+    {
+      "phone": "13910000012",
+      "status": "failed",
+      "message": "签名校验失败",
+      "timestamp": 1781237719.1810176
+    },
+    {
+      "phone": "13910000020",
+      "status": "success",
+      "message": "",
+      "timestamp": 1781237719.1811323
+    },
+    {
+      "phone": "13910000004",
+      "status": "success",
+      "message": "",
+      "timestamp": 1781237719.181234
+    },
+    {
+      "phone": "13910000013",
+      "status": "failed",
+      "message": "签名校验失败",
+      "timestamp": 1781237719.1812444
+    },
+    {
+      "phone": "13910000003",
+      "status": "success",
+      "message": "",
+      "timestamp": 1781237719.1813319
+    },
+    {
+      "phone": "13910000006",
+      "status": "success",
+      "message": "",
+      "timestamp": 1781237719.1814249
+    },
+    {
+      "phone": "13910000014",
+      "status": "failed",
+      "message": "短信网关连接超时",
+      "timestamp": 1781237719.1814353
+    }
+  ]
+}

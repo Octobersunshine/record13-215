@@ -40,12 +40,154 @@ class BatchReport:
     duration: float = 0.0
     results: List[SendResult] = field(default_factory=list)
 
+    @property
+    def success_rate(self) -> float:
+        if self.total == 0:
+            return 0.0
+        return self.success / self.total * 100
+
+    @property
+    def failed_rate(self) -> float:
+        if self.total == 0:
+            return 0.0
+        return self.failed / self.total * 100
+
+    @property
+    def actual_sent(self) -> int:
+        return self.success + self.failed
+
+    @property
+    def failure_reasons(self) -> Dict[str, int]:
+        reasons: Dict[str, int] = {}
+        for r in self.results:
+            if r.status == SendStatus.FAILED:
+                reason = r.message or "未知错误"
+                reasons[reason] = reasons.get(reason, 0) + 1
+        return dict(sorted(reasons.items(), key=lambda x: -x[1]))
+
+    def get_by_status(self, status: SendStatus) -> List[SendResult]:
+        return [r for r in self.results if r.status == status]
+
+    def get_failed_phones(self) -> List[str]:
+        return [r.phone for r in self.results if r.status == SendStatus.FAILED]
+
+    def get_success_phones(self) -> List[str]:
+        return [r.phone for r in self.results if r.status == SendStatus.SUCCESS]
+
+    def get_blacklisted_phones(self) -> List[str]:
+        return [r.phone for r in self.results if r.status == SendStatus.BLACKLISTED]
+
+    def get_invalid_phones(self) -> List[str]:
+        return [r.phone for r in self.results if r.status == SendStatus.INVALID]
+
     def summary(self) -> str:
         return (
             f"发送报告: 总计={self.total}, 成功={self.success}, "
             f"失败={self.failed}, 黑名单={self.blacklisted}, "
             f"无效号码={self.invalid}, 耗时={self.duration:.2f}s"
         )
+
+    def detailed_report(self) -> str:
+        lines = []
+        lines.append("=" * 60)
+        lines.append("短信批量发送报告")
+        lines.append("=" * 60)
+        lines.append(f"总计号码数:       {self.total}")
+        lines.append(f"成功发送数:       {self.success}  ({self.success_rate:.2f}%)")
+        lines.append(f"发送失败数:       {self.failed}  ({self.failed_rate:.2f}%)")
+        lines.append(f"黑名单过滤数:     {self.blacklisted}")
+        lines.append(f"无效号码数:       {self.invalid}")
+        lines.append(f"实际发送量:       {self.actual_sent}")
+        lines.append(f"总耗时:           {self.duration:.2f} 秒")
+        if self.actual_sent > 0 and self.duration > 0:
+            lines.append(f"平均速率:         {self.actual_sent / self.duration:.2f} 条/秒")
+        lines.append("-" * 60)
+
+        if self.failure_reasons:
+            lines.append("失败原因统计:")
+            for reason, count in self.failure_reasons.items():
+                pct = count / self.failed * 100 if self.failed > 0 else 0
+                lines.append(f"  [{count:3d}] {reason}  ({pct:.1f}%)")
+            lines.append("-" * 60)
+
+        if self.success > 0:
+            lines.append(f"成功号码 ({self.success} 个):")
+            for r in self.get_by_status(SendStatus.SUCCESS):
+                lines.append(f"  ✅ {r.phone}")
+            lines.append("-" * 60)
+
+        if self.failed > 0:
+            lines.append(f"失败号码 ({self.failed} 个):")
+            for r in self.get_by_status(SendStatus.FAILED):
+                lines.append(f"  ❌ {r.phone} - {r.message}")
+            lines.append("-" * 60)
+
+        if self.blacklisted > 0:
+            lines.append(f"黑名单号码 ({self.blacklisted} 个):")
+            for phone in self.get_blacklisted_phones():
+                lines.append(f"  ⛔ {phone}")
+            lines.append("-" * 60)
+
+        if self.invalid > 0:
+            lines.append(f"无效号码 ({self.invalid} 个):")
+            for phone in self.get_invalid_phones():
+                lines.append(f"  ⚠️  {phone}")
+            lines.append("-" * 60)
+
+        lines.append("=" * 60)
+        return "\n".join(lines)
+
+    def to_dict(self) -> Dict:
+        return {
+            "total": self.total,
+            "success": self.success,
+            "failed": self.failed,
+            "blacklisted": self.blacklisted,
+            "invalid": self.invalid,
+            "duration": round(self.duration, 2),
+            "success_rate": round(self.success_rate, 2),
+            "failed_rate": round(self.failed_rate, 2),
+            "actual_sent": self.actual_sent,
+            "failure_reasons": self.failure_reasons,
+            "results": [
+                {
+                    "phone": r.phone,
+                    "status": r.status.value,
+                    "message": r.message,
+                    "timestamp": r.timestamp,
+                }
+                for r in self.results
+            ],
+        }
+
+    def to_json(self, indent: int = 2) -> str:
+        return json.dumps(self.to_dict(), ensure_ascii=False, indent=indent)
+
+    def export_to_file(self, filepath: str) -> None:
+        path = Path(filepath)
+        suffix = path.suffix.lower()
+        if suffix == ".json":
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(self.to_json())
+        elif suffix == ".csv":
+            with open(path, "w", encoding="utf-8-sig", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow(["手机号", "状态", "消息", "时间戳"])
+                for r in self.results:
+                    writer.writerow([
+                        r.phone,
+                        r.status.value,
+                        r.message,
+                        r.timestamp,
+                    ])
+        elif suffix in (".txt", ".log", ""):
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(self.detailed_report())
+        else:
+            logger.warning(f"不支持的报告格式 {suffix}，默认使用 TXT 格式")
+            with open(path.with_suffix(".txt"), "w", encoding="utf-8") as f:
+                f.write(self.detailed_report())
+        logger.info(f"发送报告已导出到: {filepath}")
 
 
 class RateLimiter:
@@ -231,6 +373,22 @@ async def _default_sender(phone: str, content: str) -> bool:
     return True
 
 
+async def _flaky_sender(phone: str, content: str) -> bool:
+    import random
+    await asyncio.sleep(0.01)
+    roll = random.random()
+    if roll < 0.15:
+        raise ConnectionError("短信网关连接超时")
+    elif roll < 0.25:
+        raise ValueError("签名校验失败")
+    elif roll < 0.35:
+        raise RuntimeError("账户余额不足")
+    elif roll < 0.45:
+        return False
+    logger.info(f"[模拟发送] -> {phone}: {content}")
+    return True
+
+
 class SmsService:
     def __init__(
         self,
@@ -378,9 +536,11 @@ async def progress_callback(current: int, total: int) -> None:
 
 
 async def main():
-    service = SmsService(rate_per_second=5.0)
-    logger.info(f"短信服务已启动，发送频率: {service.rate} 条/秒")
-
+    print()
+    print("=" * 70)
+    print("演示 1: 基础批量发送 + 汇总报告")
+    print("=" * 70)
+    service = SmsService(rate_per_second=100.0)
     service.blacklist.add("13800000001")
     service.blacklist.add("13800000002")
     logger.info(f"黑名单加载完成，共 {service.blacklist.size} 个号码")
@@ -402,13 +562,80 @@ async def main():
 
     logger.info(f"开始批量发送短信，目标号码数: {len(phones)}")
     report = await service.send_batch(phones, content, on_progress=progress_callback)
+    print()
+    print(report.summary())
+    print()
 
-    logger.info("=" * 60)
-    logger.info(report.summary())
-    logger.info("=" * 60)
+    print("=" * 70)
+    print("演示 2: 详细报告（含成功率、速率、各类号码清单）")
+    print("=" * 70)
+    print(report.detailed_report())
 
-    for result in report.results:
-        logger.info(f"[{result.status.value}] {result.phone} - {result.message}")
+    print()
+    print("=" * 70)
+    print("演示 3: 发送失败 + 失败原因统计 + 多格式报告导出")
+    print("=" * 70)
+    import random
+    random.seed(42)
+    service2 = SmsService(rate_per_second=100.0, sender=_flaky_sender)
+    service2.blacklist.add("13800000011")
+
+    phones2 = [
+        "13800000011",
+        "123456",
+        "13910000001",
+        "13910000002",
+        "13910000003",
+        "13910000004",
+        "13910000005",
+        "13910000006",
+        "13910000007",
+        "13910000008",
+        "13910000009",
+        "13910000010",
+        "13910000011",
+        "13910000012",
+        "13910000013",
+        "13910000014",
+        "13910000015",
+        "13910000016",
+        "13910000017",
+        "13910000018",
+        "13910000019",
+        "13910000020",
+    ]
+
+    report2 = await service2.send_batch(phones2, content)
+    print(report2.detailed_report())
+
+    print()
+    print("失败原因统计 (failure_reasons):")
+    if report2.failure_reasons:
+        for reason, count in report2.failure_reasons.items():
+            print(f"  {count:3d} 次 - {reason}")
+    else:
+        print("  (无失败)")
+
+    print()
+    print("导出报告到文件...")
+    report2.export_to_file("report.txt")
+    report2.export_to_file("report.csv")
+    report2.export_to_file("report.json")
+    print("已生成: report.txt, report.csv, report.json")
+
+    print()
+    print("=" * 70)
+    print("演示 4: 数据接口调用示例")
+    print("=" * 70)
+    print(f"成功率:        {report2.success_rate:.2f}%")
+    print(f"失败率:        {report2.failed_rate:.2f}%")
+    print(f"实际发送量:    {report2.actual_sent}")
+    print(f"成功号码数:    {len(report2.get_success_phones())}")
+    print(f"失败号码数:    {len(report2.get_failed_phones())}")
+    print(f"黑名单号码数:  {len(report2.get_blacklisted_phones())}")
+    print(f"无效号码数:    {len(report2.get_invalid_phones())}")
+    data = report2.to_dict()
+    print(f"to_dict() keys: {list(data.keys())}")
 
 
 if __name__ == "__main__":
